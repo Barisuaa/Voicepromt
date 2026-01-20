@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Voice Prompt Recorder</title>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+/* ---------- GLOBAL ---------- */
+body {
+  font-family: 'Patrick Hand', cursive; /* little bit curly */
+  background-image: url('https://res.cloudinary.com/drdylgyq3/image/upload/v1768948815/uploads/j7ghdd8a39mbusqzuhqo.jpg'); /* Path to your image */
+  
+  /* Optional styling to make it look nice */
+  background-size: cover;        /* Makes the image cover the entire div */
+  background-position: center;   /* Centers the image */
+  background-repeat: no-repeat;  /* Prevents the image from repeating */
+  
+  color: #fff;
+  
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+.container2 {
+  width: 100%;
+  background: transparent;
+  padding: 30px px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+  position: relative;
+  overflow: hidden;
+  animation: slideUp 1s ease-out forwards;
+margin-top: 20%;
+}
+.container {
+  width: 100%;
+  background: transparent;
+  padding: 30px px;
+  border-radius: 20px;
+  text-align: center;
+  
+  position: relative;
+  overflow: hidden;
+  animation: slideUp 1s ease-out forwards;
+margin-top: 10%;
+height: 70%;
+}
+
+/* ---------- HEADER ---------- */
+.header {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 15px;
+  margin-top: 15px;
+  color: #a5b4fc;
+  letter-spacing: 0.5px;
+  animation: fadeInDown 1s ease forwards;
+}
+
+/* ---------- TITLE ---------- */
+h3#instruction {
+  font-size: 26px;
+  margin-bottom: 20px;
+  line-height: 1.4;
+  animation: fadeIn 1s ease forwards;
+}
+
+/* ---------- ZOOM-IN CONFIRM ---------- */
+#check {
+  display: none;
+  animation: zoomIn 0.5s ease forwards;
+}
+
+.okay {
+  font-size: 22px;
+  margin-bottom: 15px;
+  line-height: 1.4;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* ---------- BUTTONS ---------- */
+button {
+  padding: 14px 22px;
+  margin: 10px 5px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+button.record {
+  background: linear-gradient(45deg, #22c55e, #16a34a);
+  color: #000;
+}
+
+button.record:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+}
+
+button.yes {
+  background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+}
+
+button.yes:hover {
+  transform: scale(1.05);
+}
+
+button.no {
+  background: linear-gradient(45deg, #ef4444, #b91c1c);
+}
+
+button.no:hover {
+  transform: scale(1.05);
+}
+
+/* ---------- RECORDING ANIMATION ---------- */
+.pulse {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, #ef4444 0%, rgba(239,68,68,0) 70%);
+  border-radius: 50%;
+  margin: 20px auto;
+  animation: pulseAnim 1s infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+@keyframes pulseAnim {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ---------- AUDIO ---------- */
+audio {
+  width: 100%;
+  margin-top: 15px;
+  border-radius: 8px;
+  outline: none;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  animation: fadeIn 1s ease forwards;
+}
+
+/* ---------- STATUS ---------- */
+#status {
+  margin-top: 15px;
+  font-weight: 500;
+  color: #facc15;
+  min-height: 24px;
+  animation: fadeIn 1s ease forwards;
+}
+
+/* ---------- CONFIRM BUTTONS ---------- */
+#confirmBtns {
+  margin-top: 10px;
+  animation: fadeIn 1s ease forwards;
+}
+
+/* ---------- ANIMATIONS ---------- */
+@keyframes slideUp {
+  0% { transform: translateY(50px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeInDown {
+  0% { transform: translateY(-20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ---------- FOOTER ---------- */
+.footer {
+  position: absolute;
+  bottom: 10px;
+  width: 100%;
+  font-size: 12px;
+  color: #94a3b8;
+  animation: fadeInUp 1s ease forwards;
+}
+
+@keyframes fadeInUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+</style>
+</head>
+
+<body>
+<div class="container2">
+<div class="header">🎨 Designed by Tuaka</div>
+</div>
+<div class="container">
+  
+  
+  <h3 id="instruction"></h3>
+<div id="recordBtn" style="width: 100%; height: 100px; position: relative;">
+  <button style="width: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);" class="record">🎙 Record</button>
+</div>
+  <div style="display: none;" id="recordingAnim" class="pulse hidden">
+    5 ⏱
+  </div>
+
+  <div id="check">
+    <div class="okay">Is it okay? 🎧</div>
+    <audio id="playback" controls class="hidden"></audio>
+
+    <div id="confirmBtns" class="hidden">
+      <button id="yesBtn" class="yes">Yes ✅</button>
+      <button id="noBtn" class="no">No ❌</button>
+    </div>
+
+    <h4 id="status"></h4>
+  </div>
+
+  <div class="footer">© 2026. All Rights Reserved.</div>
+</div>
+
+<script>
+// ================= FIREBASE INIT =================  
+firebase.initializeApp({  
+  apiKey: "AIzaSyBZehk_8tWBhQOtCcS3VTzRRSCFCLvFGQA",  
+  authDomain: "tuak-9f342.firebaseapp.com",  
+  databaseURL: "https://tuak-9f342-default-rtdb.firebaseio.com",  
+  projectId: "tuak-9f342",  
+  storageBucket: "tuak-9f342.appspot.com",  
+  messagingSenderId: "9176071516",  
+  appId: "1:9176071516:web:38491206a78ed1c4035599"  
+});  
+  
+const db = firebase.database();  
+  
+// ================= PROMPTS =================  
+const prompts = [  
+  "Pairing",  
+  "Connected",  
+  "Disconnected",  
+  "Noise Cancellation On",  
+  "Noise Cancellation Off",  
+  "Transparency",  
+  "Low Battery",  
+  "Game Mode",  
+  "Normal",  
+  "Power Off"  
+];  
+  
+let currentIndex = 0;  
+let mediaRecorder;  
+let audioChunks = [];  
+let recordedBlob;  
+let countdownInterval;  
+  
+// ================= UI =================  
+const instruction = document.getElementById("instruction");  
+const recordBtn = document.getElementById("recordBtn");  
+const anim = document.getElementById("recordingAnim");  
+const playback = document.getElementById("playback");  
+const confirmBtns = document.getElementById("confirmBtns");  
+const yesBtn = document.getElementById("yesBtn");  
+const noBtn = document.getElementById("noBtn");  
+const statusText = document.getElementById("status");  
+const checkDiv = document.getElementById("check");  
+  
+updateInstruction();  
+
+// ================= RECORD =================  
+recordBtn.onclick = async () => {  
+  recordBtn.style.display ="none";  
+  anim.style.display ="flex";  
+  let timeLeft = 5;  
+  anim.textContent = `${timeLeft} ⏱`;  
+
+  countdownInterval = setInterval(() => {  
+    timeLeft--;  
+    anim.textContent = `${timeLeft} ⏱`;  
+  }, 1000);  
+
+  audioChunks = [];  
+  playback.classList.add("hidden");  
+  confirmBtns.classList.add("hidden");  
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });  
+  mediaRecorder = new MediaRecorder(stream);  
+
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);  
+
+  mediaRecorder.onstop = () => {  
+    recordedBlob = new Blob(audioChunks, { type: "audio/webm" });  
+    playback.src = URL.createObjectURL(recordedBlob);  
+    playback.classList.remove("hidden");  
+    confirmBtns.classList.remove("hidden");  
+  };  
+
+  mediaRecorder.start();  
+
+  setTimeout(() => {  
+    mediaRecorder.stop();  
+    clearInterval(countdownInterval);  
+    anim.style.display ="none";  
+    checkDiv.style.display = "block";  
+    checkDiv.style.animation = "zoomIn 0.5s ease forwards";  
+  }, 5000);  
+};  
+
+// ================= YES (UPLOAD + SAVE TO FIREBASE) =================  
+yesBtn.onclick = async () => {  
+  statusText.innerText = "📤 Uploading voice...";  
+
+  try {  
+    const promptName = prompts[currentIndex];  
+    const safeName = promptName.replace(/\s+/g, "_");  
+
+    const file = new File([recordedBlob], `${safeName}.webm`, {  
+      type: "audio/webm"  
+    });  
+
+    const formData = new FormData();  
+    formData.append("file", file);  
+    formData.append("upload_preset", "iwillmakeit");  
+    formData.append("folder", "voice_prompts");  
+
+    const response = await fetch(  
+      "https://api.cloudinary.com/v1_1/drdylgyq3/raw/upload",  
+      { method: "POST", body: formData }  
+    );  
+
+    if (!response.ok) throw new Error("Upload failed");  
+
+    const data = await response.json();  
+
+    await db.ref("voice_prompts/" + (currentIndex + 1)).set({  
+      name: promptName,  
+      url: data.secure_url,  
+      public_id: data.public_id,  
+      createdAt: Date.now()  
+    });  
+
+    currentIndex++;  
+    anim.style.display ="none";  
+    checkDiv.style.display ="none";  
+    recordBtn.style.display ="block";  
+
+    if (currentIndex < prompts.length) {  
+      updateInstruction();  
+      resetUI();  
+    } else {  
+      instruction.innerText = "🎉 Thanks All prompts recorded! ✅";  
+      recordBtn.style.display = "none";  
+      confirmBtns.classList.add("hidden");  
+      playback.classList.add("hidden");  
+      statusText.innerText = "";  
+    }  
+
+  } catch (err) {  
+    console.error(err);  
+    statusText.innerText = "❌ Upload failed. Try again.";  
+  }  
+};  
+
+// ================= NO =================  
+noBtn.onclick = () => resetUI();  
+
+// ================= HELPERS =================  
+function updateInstruction() {  
+  instruction.innerText =  
+    `🎤 Click record and say:\n"${prompts[currentIndex]}"\n(${currentIndex + 1}/10)`;  
+recordBtn.style.display ="block";
+
+
+}  
+
+function resetUI() {  
+  playback.classList.add("hidden");  
+  confirmBtns.classList.add("hidden");  
+  statusText.innerText = "";  
+  anim.style.display ="none";  
+  checkDiv.style.display="none";  
+  recordBtn.style.display ="block";  
+}  
+</script>
+
+</body>
+</html>
