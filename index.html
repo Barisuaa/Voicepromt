@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Voice Prompt Recorder</title>
+
+<!-- Firebase App + Database + Storage -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.container {
+  width: 360px;
+  background: #020617;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+button {
+  padding: 12px 18px;
+  margin: 8px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.record { background: #22c55e; color: #000; }
+.yes { background: #3b82f6; color: #fff; }
+.no { background: #ef4444; color: #fff; }
+
+.hidden { display: none; }
+
+.pulse {
+  width: 60px;
+  height: 60px;
+  background: red;
+  border-radius: 50%;
+  margin: 20px auto;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+audio { width: 100%; margin-top: 10px; }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h3 id="instruction"></h3>
+
+  <button id="recordBtn" class="record">🎙 Record</button>
+
+  <div id="recordingAnim" class="pulse hidden"></div>
+
+  <audio id="playback" controls class="hidden"></audio>
+
+  <div id="confirmBtns" class="hidden">
+    <button id="yesBtn" class="yes">Yes</button>
+    <button id="noBtn" class="no">No</button>
+  </div>
+
+  <h4 id="status"></h4>
+</div>
+
+<script>
+// ================= FIREBASE CONFIG =================
+firebase.initializeApp({
+  apiKey: "AIzaSyBZehk_8tWBhQOtCcS3VTzRRSCFCLvFGQA",
+  authDomain: "tuak-9f342.firebaseapp.com",
+  databaseURL: "https://tuak-9f342-default-rtdb.firebaseio.com",
+  projectId: "tuak-9f342",
+  storageBucket: "tuak-9f342.appspot.com",
+  messagingSenderId: "9176071516",
+  appId: "1:9176071516:web:38491206a78ed1c4035599"
+});
+
+const db = firebase.database();
+const storage = firebase.storage();
+
+// ================= PROMPTS =================
+const prompts = [
+  "Pairing",
+  "Connected",
+  "Disconnected",
+  "Noise Cancellation",
+  "Noise Cancellation Off",
+  "Transparency",
+  "Low Battery",
+  "Game Mode",
+  "Normal",
+  "Power Off"
+];
+
+let currentIndex = 0;
+let mediaRecorder;
+let audioChunks = [];
+let recordedBlob;
+
+// ================= UI ELEMENTS =================
+const instruction = document.getElementById("instruction");
+const recordBtn = document.getElementById("recordBtn");
+const anim = document.getElementById("recordingAnim");
+const playback = document.getElementById("playback");
+const confirmBtns = document.getElementById("confirmBtns");
+const yesBtn = document.getElementById("yesBtn");
+const noBtn = document.getElementById("noBtn");
+const statusText = document.getElementById("status");
+
+updateInstruction();
+
+// ================= RECORDING =================
+recordBtn.onclick = async () => {
+  audioChunks = [];
+  playback.classList.add("hidden");
+  confirmBtns.classList.add("hidden");
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+    mediaRecorder.onstop = () => {
+      recordedBlob = new Blob(audioChunks, { type: "audio/webm" });
+      playback.src = URL.createObjectURL(recordedBlob);
+      playback.classList.remove("hidden");
+      confirmBtns.classList.remove("hidden");
+    };
+
+    mediaRecorder.start();
+    anim.classList.remove("hidden");
+
+    // Auto-stop after 5 seconds
+    setTimeout(() => {
+      mediaRecorder.stop();
+      anim.classList.add("hidden");
+    }, 5000);
+
+  } catch (err) {
+    console.error("Microphone access denied or error:", err);
+    statusText.innerText = "Microphone access failed";
+  }
+};
+
+// ================= YES - UPLOAD TO FIREBASE STORAGE =================
+yesBtn.onclick = async () => {
+  const promptName = prompts[currentIndex];
+  const safeName = promptName.replace(/\s+/g, "_");
+  const filePath = `voice_prompts/${safeName}.webm`;
+
+  statusText.innerText = "Uploading...";
+
+  try {
+    const storageRef = storage.ref(filePath);
+    const uploadTask = storageRef.put(recordedBlob);
+
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        statusText.innerText = `Uploading: ${Math.round(progress)}%`;
+      },
+      (error) => {
+        console.error("Upload error:", error);
+        statusText.innerText = "Upload failed ❌";
+      },
+      async () => {
+        // Upload complete → get download URL
+        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+
+        // Save metadata to Realtime Database
+        await db.ref("voice_prompts/" + (currentIndex + 1)).set({
+          name: promptName,
+          url: downloadURL,
+          createdAt: Date.now()
+        });
+
+        statusText.innerText = "Saved ✅";
+
+        currentIndex++;
+        if (currentIndex < prompts.length) {
+          updateInstruction();
+          resetUI();
+        } else {
+          instruction.innerText = "✅ All prompts recorded successfully!";
+          recordBtn.style.display = "none";
+          confirmBtns.classList.add("hidden");
+          playback.classList.add("hidden");
+          statusText.innerText = "";
+        }
+      }
+    );
+
+  } catch (err) {
+    console.error(err);
+    statusText.innerText = "Upload failed ❌";
+  }
+};
+
+// ================= NO - RETRY =================
+noBtn.onclick = () => {
+  resetUI();
+};
+
+// ================= HELPERS =================
+function updateInstruction() {
+  instruction.innerText = 
+    `Say: "\( {prompts[currentIndex]}"\n( \){currentIndex + 1}/${prompts.length})`;
+}
+
+function resetUI() {
+  playback.classList.add("hidden");
+  confirmBtns.classList.add("hidden");
+  statusText.innerText = "";
+}
+</script>
+
+</body>
+</html>
